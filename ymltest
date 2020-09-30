@@ -1,0 +1,427 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Entitlement APIs",
+    "description": "The entitlement APIs are a set of apis exposed to entitlement servers.\n",
+    "version": "2.0",
+    "contact": {
+      "name": "LotusFlare",
+      "email": "tech@lotusflare.com",
+      "url": "http://www.lotusflare.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.lotusflare.com/{basePath}",
+      "description": "LotusFlare API Server",
+      "variables": {
+        "basePath": {
+          "default": "/api/v3/entitlement"
+        }
+      }
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "epoch": {
+        "type": "integer",
+        "description": "UNIX timestamp in UTC epoch seconds. More information about this format can be found here:\nhttps://en.wikipedia.org/wiki/Unix_time.\n",
+        "minimum": 0,
+        "example": 1545667505
+      },
+      "response_base": {
+        "type": "object",
+        "properties": {
+          "server_time": {
+            "$ref": "#/components/schemas/epoch"
+          },
+          "error_code": {
+            "type": "integer",
+            "description": "Error code (0 for success).\n",
+            "example": 0
+          },
+          "module": {
+            "type": "string",
+            "description": "Module in which error occured, used for separation of\ndifferent error codes.\n",
+            "example": "COMMON"
+          }
+        }
+      },
+      "plan": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "prepaid",
+              "postpaid",
+              "hybrid"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "The localized plan name."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "domestic",
+              "domestic_roaming",
+              "international_roaming"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "The localized plan description."
+          },
+          "in_use": {
+            "type": "boolean",
+            "description": "If the plan is currently in use."
+          }
+        }
+      },
+      "service": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "The overall limit for service usage. If absent it is unlimited."
+          },
+          "used": {
+            "type": "integer",
+            "description": "The current usage for the service."
+          },
+          "fup": {
+            "type": "integer",
+            "description": "The fair use policy limit for this service."
+          }
+        }
+      },
+      "data": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/service"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "GB",
+                  "MB",
+                  "KB"
+                ],
+                "description": "The unit for limit, used and fup."
+              }
+            }
+          }
+        ]
+      },
+      "voice": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/service"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "HR",
+                  "MIN",
+                  "SEC"
+                ],
+                "description": "The unit for limit, used and fup."
+              }
+            }
+          }
+        ]
+      },
+      "sms": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/service"
+          }
+        ]
+      },
+      "usage": {
+        "type": "object",
+        "properties": {
+          "services": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/data"
+              },
+              "voice": {
+                "$ref": "#/components/schemas/voice"
+              },
+              "sms": {
+                "$ref": "#/components/schemas/sms"
+              }
+            }
+          }
+        }
+      },
+      "subscription": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "$ref": "#/components/schemas/epoch"
+          },
+          "end": {
+            "$ref": "#/components/schemas/epoch"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/plan"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/usage"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "description": "SUBSCRIBER STATE\n<p> 1 - Pending [ Initial subscriber's state. Subscriber hasn't been activated yet. Each operator defines when subscriber gets activated. ] </p>\n<p> 2 - Active [ Subscriber is active and can use all services. This is the normal state. ]</p>\n<p> 3 - GraceWithoutSubscription [ Subscriber is in grace and can no longer access services. Subscriber ends up in this state when he/she hasn't paid the bill within the grace period; this is the only grace state for prepaid subscribers. Postpaid subscribers have one additional grace state. ] </p>\n<p> 4 - GraceWithSubscription [ Subscriber is in grace but can still access services. Subscriber ends up in this state when he/she hasn't paid the bill within the first grace period. Postpaid subscriber in grace usually goes from GraceWithSubscription to GraceWithoutSubscription. ] </p>\n<p> 5 - Terminating [ The given subscriber has requested to terminate his line. ] </p>\n<p> 6 - PortingOut </p>\n<p> 7 - Terminated [ Subscriber has been terminated ] </p>\n"
+          },
+          "monthly": {
+            "type": "boolean",
+            "description": "Set to true if monthly billing otherwise false",
+            "example": true
+          },
+          "last_updated": {
+            "$ref": "#/components/schemas/epoch"
+          }
+        }
+      },
+      "application": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name for this application. For IOS we will use bundle id \n(https://developer.apple.com/documentation/appstoreconnectapi/bundle_ids)\nFor android we will use package name\n(https://developers.google.com/android/management/apps)\n"
+          },
+          "playstore": {
+            "type": "string",
+            "description": "The playstore url for this application."
+          }
+        }
+      },
+      "applications": {
+        "type": "object",
+        "properties": {
+          "ios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/application"
+            }
+          },
+          "android": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/application"
+            }
+          }
+        }
+      },
+      "response_billing_fields": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "$ref": "#/components/schemas/subscription"
+          },
+          "device_type": {
+            "type": "string",
+            "description": "The current device type being used with this subscription.\n",
+            "example": "IPhone 11 XS Max"
+          }
+        }
+      },
+      "response_application_fields": {
+        "type": "object",
+        "properties": {
+          "applications": {
+            "$ref": "#/components/schemas/applications"
+          },
+          "terms_conditions": {
+            "type": "string",
+            "description": "The url to the terms and condition.\n"
+          }
+        }
+      },
+      "500_response": {
+        "type": "string",
+        "description": "Internal server error",
+        "example": "<html><head><title>500 Internal Server Error</title></head><body bgcolor='white'><center><h1>500 Internal Server Error</h1></center><hr><center>openresty/1.13.6.2</center></body></html>"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/get_billing_info": {
+      "post": {
+        "summary": "Gets billing info for the msisdn provided in the authorization token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "language_code": {
+                    "description": "The language code used to determine which localized string to return.\n",
+                    "type": "string",
+                    "example": "en"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/response_base"
+                    },
+                    {
+                      "$ref": "#/components/schemas/response_billing_fields"
+                    }
+                  ]
+                },
+                "examples": {
+                  "get_billing_info_unlimited": {
+                    "summary": "Get billing info for an unlimited subscription",
+                    "value": {
+                      "server_time": 1545667505,
+                      "error_code": 0,
+                      "module": "COMMON",
+                      "subscription": {
+                        "start": 1545667505,
+                        "end": 1545667505,
+                        "plan": {
+                          "type": "prepaid",
+                          "name": "Awesome Plan",
+                          "category": "domestic",
+                          "description": "This is an awesome plan",
+                          "in_use": true
+                        },
+                        "usage": {
+                          "services": {
+                            "data": {
+                              "used": 2,
+                              "fup": 50,
+                              "unit": "GB"
+                            },
+                            "voice": {
+                              "used": 0,
+                              "fup": 1000,
+                              "unit": "HR"
+                            },
+                            "sms": {
+                              "used": 3,
+                              "fup": 10
+                            }
+                          }
+                        },
+                        "status": 1,
+                        "monthly": true,
+                        "last_updated": 1545667505
+                      },
+                      "device_type": "IPhone 11 XS Max"
+                    }
+                  },
+                  "get_billing_info_limited": {
+                    "summary": "Get billing info for an limited subscription",
+                    "value": {
+                      "server_time": 1545667505,
+                      "error_code": 0,
+                      "module": "COMMON",
+                      "subscription": {
+                        "start": 1545667505,
+                        "end": 1545667505,
+                        "plan": {
+                          "type": "prepaid",
+                          "name": "Awesome Plan",
+                          "category": "domestic",
+                          "description": "This is an awesome plan",
+                          "in_use": true
+                        },
+                        "usage": {
+                          "services": {
+                            "data": {
+                              "limit": 10,
+                              "used": 2,
+                              "fup": 50,
+                              "unit": "GB"
+                            },
+                            "voice": {
+                              "limit": 10,
+                              "used": 0,
+                              "fup": 1000,
+                              "unit": "HR"
+                            },
+                            "sms": {
+                              "limit": 5,
+                              "used": 3,
+                              "fup": 10
+                            }
+                          }
+                        },
+                        "status": 1,
+                        "monthly": true,
+                        "last_updated": 1545667505
+                      },
+                      "device_type": "IPhone 11 XS Max"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization failure"
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/500_response"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
